@@ -114,7 +114,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         scope.launch {
             try {
                 if (source == CatalogSource.TMDB) {
-                    if (tmdb.isBlank()) throw IllegalStateException("Add a TMDB key, or choose YTS.")
+                    if (tmdb.isBlank()) throw IllegalStateException("Add a TMDB key to use TMDB, or choose YTS.")
                     if (tmdb.trim() != settings?.tmdbKey) app.tmdb.verifyKey(tmdb)
                 }
                 val r = region.trim().uppercase(Locale.ROOT)
@@ -181,7 +181,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
         Panel("Plugins") {
             Text(
-                "Plugins add more ways to watch to a movie's page. Only add plugin files you trust: a plugin runs inside Reelune with the same access as the app.",
+                "Plugins add more ways to watch to a movie's page. A plugin is a .reelune-plugin file: add it here, not through Android. Only add plugins you trust: a plugin runs inside Reelune with the same access as the app.",
                 color = Reel.TextSoft,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -189,7 +189,7 @@ fun SettingsScreen(onBack: () -> Unit) {
             if (plugins.isEmpty()) Text("No plugins added.", color = Reel.TextFaint, style = MaterialTheme.typography.bodySmall)
             GlassButton(
                 "Add plugin from file",
-                onClick = { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "*/*")) },
+                onClick = { picker.launch(arrayOf("*/*")) },
                 icon = { Icon(Icons.Rounded.Add, null, tint = Reel.Text, modifier = Modifier.size(18.dp)) },
             )
         }

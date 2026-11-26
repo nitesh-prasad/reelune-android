@@ -21,19 +21,13 @@ data class Settings(
     val omdbKey: String = "",
     /** ISO 3166-1 country used for age certifications, e.g. "IN" or "US". */
     val region: String = defaultRegion(),
-    /** Null until the user picks a catalogue on first run. */
+    /** Null until the user picks a catalogue in Settings. */
     val catalog: CatalogSource? = null,
 ) {
     val hasTmdbKey: Boolean get() = tmdbKey.isNotBlank()
 
-    /** Ready to browse: a catalogue is chosen and, for TMDB, a key is saved. */
-    val isSetUp: Boolean get() = when (catalog) {
-        CatalogSource.YTS -> true
-        CatalogSource.TMDB -> hasTmdbKey
-        null -> hasTmdbKey // Installs from before the catalogue choice existed used TMDB.
-    }
-
-    val activeCatalog: CatalogSource get() = catalog ?: CatalogSource.TMDB
+    /** YTS by default. Installs from 1.0.0, which only had TMDB, keep TMDB if they saved a key. */
+    val activeCatalog: CatalogSource get() = catalog ?: if (hasTmdbKey) CatalogSource.TMDB else CatalogSource.YTS
 
     companion object {
         fun defaultRegion(): String = Locale.getDefault().country.takeIf { it.length == 2 } ?: "US"

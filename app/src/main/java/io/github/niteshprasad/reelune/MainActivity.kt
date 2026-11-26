@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -25,7 +24,6 @@ import dev.chrisbanes.haze.rememberHazeState
 import io.github.niteshprasad.reelune.ui.Sky
 import io.github.niteshprasad.reelune.ui.details.DetailsScreen
 import io.github.niteshprasad.reelune.ui.home.HomeScreen
-import io.github.niteshprasad.reelune.ui.onboarding.OnboardingScreen
 import io.github.niteshprasad.reelune.ui.settings.SettingsScreen
 import io.github.niteshprasad.reelune.ui.theme.LocalHaze
 import io.github.niteshprasad.reelune.ui.theme.ReeluneTheme
@@ -42,7 +40,6 @@ class MainActivity : ComponentActivity() {
 }
 
 object Routes {
-    const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val SETTINGS = "settings"
     const val MOVIE = "movie/{key}"
@@ -57,22 +54,15 @@ private fun ReeluneRoot() {
 
     Box(Modifier.fillMaxSize()) {
         Sky(Modifier.fillMaxSize().hazeSource(skyHaze))
-        val s = settings ?: return@Box // Settings load in a few milliseconds; the sky shows meanwhile.
+        settings ?: return@Box // Settings load in a few milliseconds; the sky shows meanwhile.
         CompositionLocalProvider(LocalHaze provides skyHaze) {
             val nav = rememberNavController()
-            // Decided once: changing settings later must not rebuild the navigation graph.
-            val start = remember { if (s.isSetUp) Routes.HOME else Routes.ONBOARDING }
             NavHost(
                 navController = nav,
-                startDestination = start,
+                startDestination = Routes.HOME,
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() },
             ) {
-                composable(Routes.ONBOARDING) {
-                    OnboardingScreen(onDone = {
-                        nav.navigate(Routes.HOME) { popUpTo(Routes.ONBOARDING) { inclusive = true } }
-                    })
-                }
                 composable(Routes.HOME) {
                     HomeScreen(
                         onOpenMovie = { nav.navigate(Routes.movie(it)) },

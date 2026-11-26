@@ -20,9 +20,8 @@
 
 ## Features
 
-- **Choose your catalogue** in Settings (or on first launch):
-  - **TMDB:** huge catalogue, age ratings for your country, needs a free key
-  - **YTS:** no key needed, includes IMDb ratings and US age ratings; year and language filters use YTS's public browse pages
+- **Opens straight to movies:** YTS is the default catalogue and needs no key. It includes IMDb ratings and US age ratings; year and language filters use YTS's public browse pages
+- **Or use TMDB** (Settings → Movie data source): huge catalogue and age ratings for your country, with a free key
 - **Browse:** trending films in a rotating featured carousel, then a poster grid that keeps loading as you scroll
 - **Search** by title
 - **Filters:** genre, release year (single years or decades), original language (100+), minimum rating, and sort by popularity, rating, release date, box office or title
@@ -38,16 +37,18 @@
 
 1. Download `Reelune-<version>.apk` from [Releases](../../releases).
 2. Open it on your phone and allow installing from your browser or file manager when Android asks.
-3. On first launch, either tap **Use YTS** (no key needed) or paste a free **TMDB** API key ([get one here](https://www.themoviedb.org/settings/api)). Both the short "API key" and the long "API Read Access Token" work. You can switch in Settings at any time.
-4. Optional: add a free **OMDb** key in Settings ([get one here](https://www.omdbapi.com/apikey.aspx)) for IMDb, Rotten Tomatoes and Metacritic scores.
+3. Open Reelune. Movies load straight away from YTS; no account or key is needed.
+4. Optional, in Settings:
+   - Switch to **TMDB** with a free API key ([get one here](https://www.themoviedb.org/settings/api)). Both the short "API key" and the long "API Read Access Token" work.
+   - Add a free **OMDb** key ([get one here](https://www.omdbapi.com/apikey.aspx)) for Rotten Tomatoes and Metacritic scores, plus IMDb ratings when using TMDB.
 
 Keys are stored only on your phone.
 
 ## Plugins
 
-Reelune can load plugins: APK files that add viewing sources to a movie's page. A plugin isn't installed through Android. You add it inside Reelune:
+Reelune can load plugins: `.reelune-plugin` files that add viewing sources to a movie's page. A plugin isn't an Android app and can't be installed through Android. You add it inside Reelune:
 
-1. **Settings → Plugins → Add plugin from file**, and pick the plugin's `.apk`.
+1. **Settings → Plugins → Add plugin from file**, and pick the `.reelune-plugin` file.
 2. Reelune shows the plugin's name, version and **signing certificate fingerprint (SHA-256)**. Check it matches the one the plugin's author published, then tap **Add plugin**.
 3. Updates must be signed with the same certificate, or Reelune refuses them. To switch to a plugin from a different signer, remove the old one first.
 
@@ -81,6 +82,8 @@ The whole contract is one file: [`plugin-api/.../ReelunePlugin.kt`](plugin-api/s
    ```
 
 5. Turn off minification (`isMinifyEnabled = false`), because Reelune finds the class by name. Always sign releases with the same key.
+6. Add `android:testOnly="true"` to the `<application>` tag, so Android refuses to install the plugin as an app.
+7. Distribute the signed release as `<Name>-<version>.reelune-plugin`. It's the same file as the APK with a different extension, which keeps Android's signature verification working while stopping it from looking like an app.
 
 How Reelune runs a plugin:
 - `findSources` and `openStream` are called off the main thread and may block.
@@ -114,10 +117,10 @@ keyPassword=…
 .\gradlew assembleRelease
 ```
 
-**Plugin test:** [`PluginStreamTest`](app/src/androidTest/java/io/github/niteshprasad/reelune/PluginStreamTest.kt) loads a real plugin APK on a device or emulator, then checks adding it, finding sources, streaming a range, seeking and removing it. Copy the plugin into the app's cache before running it:
+**Plugin test:** [`PluginStreamTest`](app/src/androidTest/java/io/github/niteshprasad/reelune/PluginStreamTest.kt) loads a real plugin APK on a device or emulator, then checks adding it, finding sources, streaming a range, seeking and removing it. Copy a `.reelune-plugin` file into the app's cache before running it:
 
 ```powershell
-adb push plugin.apk /data/local/tmp/test-plugin.apk
+adb push My-Plugin-1.0.0.reelune-plugin /data/local/tmp/test-plugin.apk
 adb shell run-as io.github.niteshprasad.reelune cp /data/local/tmp/test-plugin.apk cache/test-plugin.apk
 adb shell am instrument -w -e class io.github.niteshprasad.reelune.PluginStreamTest io.github.niteshprasad.reelune.test/androidx.test.runner.AndroidJUnitRunner
 ```

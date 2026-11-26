@@ -67,8 +67,9 @@ class PluginException(message: String) : Exception(message)
 /**
  * Adds, verifies, loads and removes plugins.
  *
- * A plugin is an APK that is never installed with the system installer: Reelune keeps a read-only
- * copy in its private storage, extracts the plugin's native libraries for this device's CPU, and
+ * A plugin is a `.reelune-plugin` file: a signed package (APK structure, so Android's signature
+ * verification applies) that is marked test-only, so the system installer refuses it. Reelune keeps a
+ * read-only copy in its private storage, extracts the plugin's native libraries for this device's CPU, and
  * loads its classes with a [DexClassLoader] whose parent is Reelune's own class loader, so the
  * plugin shares Reelune's copy of the plugin API and Kotlin runtime.
  *
@@ -189,7 +190,7 @@ class PluginManager(private val context: Context) {
         val flags = PackageManager.GET_META_DATA or
             if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
         val pkg: PackageInfo = pm.getPackageArchiveInfo(apk.absolutePath, flags)
-            ?: throw PluginException("That file isn't a Reelune plugin (it isn't a valid APK).")
+            ?: throw PluginException("That file isn't a Reelune plugin. Plugins are .reelune-plugin files.")
         val app = pkg.applicationInfo ?: throw PluginException("That file isn't a Reelune plugin.")
         val meta = app.metaData
         val className = meta?.getString("reelune.plugin.class")

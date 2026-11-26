@@ -18,8 +18,8 @@ import java.net.URL
 /**
  * End-to-end check of the plugin system with a real plugin APK.
  *
- * Copy a plugin build into the app's cache first, e.g.:
- *   adb exec-in run-as io.github.niteshprasad.reelune sh -c 'cat > cache/test-plugin.apk' < plugin-debug.apk
+ * Copy a .reelune-plugin file into the app's cache first, e.g.:
+ *   adb exec-in run-as io.github.niteshprasad.reelune sh -c 'cat > cache/test-plugin.apk' < My-Plugin.reelune-plugin
  * The test is skipped when no plugin file is present.
  *
  * Uses Night of the Living Dead (1968), which is in the public domain.
@@ -33,7 +33,7 @@ class PluginStreamTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val app = context.applicationContext as ReeluneApp
         val file = File(context.cacheDir, "test-plugin.apk")
-        assumeTrue("Copy a plugin APK to ${file.absolutePath} to run this test", file.exists())
+        assumeTrue("Copy a .reelune-plugin file to ${file.absolutePath} to run this test", file.exists())
 
         // 1. Inspect and add (verifies signature metadata, copies, extracts native libs, loads classes).
         val pending = app.plugins.inspect(Uri.fromFile(file))

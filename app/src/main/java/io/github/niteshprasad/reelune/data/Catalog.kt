@@ -2,8 +2,8 @@ package io.github.niteshprasad.reelune.data
 
 /** Where Reelune gets its movies. Chosen in Settings. */
 enum class CatalogSource(val label: String, val description: String) {
-    TMDB("TMDB", "The Movie Database. Huge catalogue, trailers, age ratings for your country. Needs a free key."),
     YTS("YTS", "No key needed. Includes IMDb ratings and US age ratings."),
+    TMDB("TMDB", "The Movie Database. Huge catalogue, trailers, age ratings for your country. Needs a free key."),
 }
 
 /** A movie catalogue: browse, filter, search and look up details. */

@@ -16,7 +16,7 @@
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-8fe3ff" />
 </p>
 
-<p align="center"><img src="docs/first-run.png" width="300" alt="Reelune's first-run screen" /></p>
+<p align="center"><img src="docs/home.png" width="300" alt="Reelune home screen" /></p>
 
 ## Features
 

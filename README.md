@@ -20,7 +20,7 @@
 
 ## Features
 
-- **Opens straight to movies:** YTS is the default catalogue and needs no key. It includes IMDb ratings and US age ratings; year and language filters use YTS's public browse pages
+- **Opens straight to movies:** the default catalogue needs no account or key and includes IMDb ratings and US age ratings
 - **Or use TMDB** (Settings → Movie data source): huge catalogue and age ratings for your country, with a free key
 - **Browse:** trending films in a rotating featured carousel, then a poster grid that keeps loading as you scroll
 - **Search** by title
@@ -37,7 +37,7 @@
 
 1. Download `Reelune-<version>.apk` from [Releases](../../releases).
 2. Open it on your phone and allow installing from your browser or file manager when Android asks.
-3. Open Reelune. Movies load straight away from YTS; no account or key is needed.
+3. Open Reelune. Movies load straight away; no account or key is needed.
 4. Optional, in Settings:
    - Switch to **TMDB** with a free API key ([get one here](https://www.themoviedb.org/settings/api)). Both the short "API key" and the long "API Read Access Token" work.
    - Add a free **OMDb** key ([get one here](https://www.omdbapi.com/apikey.aspx)) for Rotten Tomatoes and Metacritic scores, plus IMDb ratings when using TMDB.
@@ -129,7 +129,7 @@ adb shell am instrument -w -e class io.github.niteshprasad.reelune.PluginStreamT
 
 ```
 app/
-  data/          Catalog interface with TMDB and YTS implementations, OMDb client, settings (DataStore)
+  data/          Catalog interface and its implementations, OMDb client, settings (DataStore)
   plugin/        PluginManager: verify, copy, extract native libs, load, remove
   ui/home/       Featured carousel, search, filter sheets, poster grid
   ui/details/    Movie page, scores, trailer dialog, plugin sources
@@ -143,7 +143,7 @@ plugin-api/      The plugin contract (plain Kotlin/JVM)
 
 ## Credits
 
-- Movie data and images: [TMDB](https://www.themoviedb.org) or [YTS](https://yts.gg/api), whichever you choose. *This product uses the TMDB API but is not endorsed or certified by TMDB.*
+- Movie data and images: [TMDB](https://www.themoviedb.org) when selected in Settings. *This product uses the TMDB API but is not endorsed or certified by TMDB.*
 - Ratings: [OMDb API](https://www.omdbapi.com).
 - Fonts: [Unbounded](https://fonts.google.com/specimen/Unbounded) and [Figtree](https://fonts.google.com/specimen/Figtree) (SIL Open Font License).
 

@@ -16,8 +16,8 @@ android {
         applicationId = "io.github.niteshprasad.reelune"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.haze.blur)
     implementation(libs.youtube.player)
+    implementation(libs.jsoup)
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)

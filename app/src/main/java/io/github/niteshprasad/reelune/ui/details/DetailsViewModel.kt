@@ -29,7 +29,7 @@ data class DetailsState(
     val streamError: String? = null,
 )
 
-class DetailsViewModel(private val movieId: Int) : ViewModel() {
+class DetailsViewModel(private val movieKey: String) : ViewModel() {
     private val app = ReeluneApp.instance
     private val _state = MutableStateFlow(DetailsState())
     val state: StateFlow<DetailsState> = _state.asStateFlow()
@@ -51,7 +51,7 @@ class DetailsViewModel(private val movieId: Int) : ViewModel() {
         viewModelScope.launch {
             try {
                 val region = app.settings.current().region
-                val movie = app.tmdb.details(movieId)
+                val movie = app.catalogForKey(movieKey).details(movieKey)
                 _state.update { it.copy(movie = movie, region = region) }
                 movie.imdbId?.takeIf { it.isNotBlank() }?.let { imdb ->
                     launch { _state.update { it.copy(scores = app.omdb.scores(imdb)) } }
@@ -101,6 +101,6 @@ class DetailsViewModel(private val movieId: Int) : ViewModel() {
     fun dismissStreamError() = _state.update { it.copy(streamError = null) }
 
     companion object {
-        fun factory(id: Int): ViewModelProvider.Factory = viewModelFactory { initializer { DetailsViewModel(id) } }
+        fun factory(key: String): ViewModelProvider.Factory = viewModelFactory { initializer { DetailsViewModel(key) } }
     }
 }

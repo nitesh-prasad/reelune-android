@@ -71,9 +71,9 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import io.github.niteshprasad.reelune.data.CatalogSource
 import io.github.niteshprasad.reelune.data.MovieDetails
 import io.github.niteshprasad.reelune.data.ScoresResult
-import io.github.niteshprasad.reelune.data.Tmdb
 import io.github.niteshprasad.reelune.plugin.PluginSources
 import io.github.niteshprasad.reelune.plugin.Source
 import io.github.niteshprasad.reelune.ui.UseBackdrop
@@ -90,35 +90,36 @@ import io.github.niteshprasad.reelune.ui.components.formatRuntime
 import io.github.niteshprasad.reelune.ui.components.languageDisplayName
 import io.github.niteshprasad.reelune.ui.player.PlayerActivity
 import io.github.niteshprasad.reelune.ui.theme.Reel
+import io.github.niteshprasad.reelune.ui.theme.fadeToTransparent
 import io.github.niteshprasad.reelune.ui.theme.glass
 import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DetailsScreen(
-    movieId: Int,
+    movieKey: String,
     onBack: () -> Unit,
-    onOpenMovie: (Int) -> Unit,
+    onOpenMovie: (String) -> Unit,
     onOpenSettings: () -> Unit,
-    vm: DetailsViewModel = viewModel(key = "movie-$movieId", factory = DetailsViewModel.factory(movieId)),
+    vm: DetailsViewModel = viewModel(key = "movie-$movieKey", factory = DetailsViewModel.factory(movieKey)),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showTrailer by remember { mutableStateOf(false) }
     val movie = state.movie
-    UseBackdrop(Tmdb.backdrop(movie?.backdropPath, "w780"))
+    UseBackdrop(movie?.backdropSmall)
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             // Backdrop
             Box(Modifier.fillMaxWidth().height(300.dp)) {
                 AsyncImage(
-                    model = Tmdb.backdrop(movie?.backdropPath),
+                    model = movie?.backdrop,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().fadeToTransparent(start = 0.35f),
                 )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Reel.Night.copy(alpha = 0.4f), 0.4f to Color.Transparent, 1f to Reel.Night)))
+                Box(Modifier.fillMaxWidth().height(120.dp).background(Brush.verticalGradient(listOf(Reel.Night.copy(alpha = 0.45f), Color.Transparent))))
             }
 
             when {
@@ -157,7 +158,7 @@ fun DetailsScreen(
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(12.dp)
                 .size(44.dp)
-                .glass(CircleShape),
+                .glass(CircleShape, strong = true),
         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Reel.Text) }
     }
 
@@ -183,7 +184,7 @@ private fun MovieBody(
     onTrailer: () -> Unit,
     onImdb: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenMovie: (Int) -> Unit,
+    onOpenMovie: (String) -> Unit,
     onPlay: (String, Source) -> Unit,
     onLink: (String) -> Unit,
     onRetrySources: () -> Unit,
@@ -191,7 +192,7 @@ private fun MovieBody(
     Column(Modifier.offset(y = (-96).dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Bottom) {
             AsyncImage(
-                model = Tmdb.poster(movie.posterPath, "w500"),
+                model = movie.poster,
                 contentDescription = "${movie.title} poster",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.width(120.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(16.dp)).background(Reel.Twilight),
@@ -247,13 +248,13 @@ private fun MovieBody(
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(movie.credits.cast.take(20), key = { it.id }) { c ->
                         Row(
-                            Modifier.glass(CircleShape).clickable(role = Role.Button) { onLink("https://www.themoviedb.org/person/${c.id}") }.padding(6.dp).padding(end = 12.dp),
+                            Modifier.glass(CircleShape).clickable(role = Role.Button) { onLink(c.page) }.padding(6.dp).padding(end = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Box(Modifier.size(44.dp).clip(CircleShape).background(Reel.Twilight), contentAlignment = Alignment.Center) {
                                 Text(c.name.take(1), color = Reel.TextSoft, style = MaterialTheme.typography.titleSmall)
-                                AsyncImage(Tmdb.profile(c.profilePath), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                AsyncImage(c.photo, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                             }
                             Column {
                                 Text(c.name, style = MaterialTheme.typography.titleSmall, color = Reel.Text)
@@ -265,18 +266,18 @@ private fun MovieBody(
             }
         }
 
-        val similar = movie.similar.results.filter { it.posterPath != null }.take(12)
+        val similar = movie.similar.results.filter { it.poster != null }.take(12)
         if (similar.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionTitle("You might also like", Modifier.padding(horizontal = 16.dp))
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(similar, key = { it.id }) { m -> PosterCard(m, onClick = { onOpenMovie(m.id) }, modifier = Modifier.width(120.dp)) }
+                    items(similar, key = { it.navKey }) { m -> PosterCard(m, onClick = { onOpenMovie(m.navKey) }, modifier = Modifier.width(120.dp)) }
                 }
             }
         }
 
         Text(
-            "Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.",
+            if (movie.source == CatalogSource.YTS) "Movie data from YTS." else "Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.",
             style = MaterialTheme.typography.bodySmall,
             color = Reel.TextFaint,
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -294,12 +295,13 @@ private fun Meta(text: String) {
 private fun Scores(movie: MovieDetails, scores: ScoresResult?, onOpenSettings: () -> Unit, modifier: Modifier) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 2) {
         val loaded = (scores as? ScoresResult.Loaded)?.scores
+        val catalogImdb = movie.sourceImdbRating?.let { String.format(Locale.US, "%.1f/10", it) }
         ScoreCard(
             logo = "IMDb", logoBg = Reel.Imdb, logoFg = Color(0xFF111111),
-            value = loaded?.imdbRating?.let { "$it/10" },
+            value = loaded?.imdbRating?.let { "$it/10" } ?: catalogImdb,
             label = loaded?.imdbVotes?.let { "$it votes" } ?: "IMDb rating",
-            loading = scores == null && !movie.imdbId.isNullOrBlank(),
-            hint = if (scores is ScoresResult.NoKey) "Add an OMDb key" else null,
+            loading = scores == null && !movie.imdbId.isNullOrBlank() && catalogImdb == null,
+            hint = if (scores is ScoresResult.NoKey && catalogImdb == null) "Add an OMDb key" else null,
             onHint = onOpenSettings,
             modifier = Modifier.weight(1f),
         )
@@ -316,7 +318,7 @@ private fun Scores(movie: MovieDetails, scores: ScoresResult?, onOpenSettings: (
             onHint = onOpenSettings,
             modifier = Modifier.weight(1f),
         )
-        ScoreCard(
+        if (movie.source == CatalogSource.TMDB) ScoreCard(
             logo = "TMDB", logoBg = Color(0xFF0D253F), logoFg = Color(0xFF01B4E4),
             value = movie.voteAverage.takeIf { movie.voteCount > 0 }?.let { String.format(Locale.US, "%.1f/10", it) },
             label = "%,d TMDB votes".format(movie.voteCount),
@@ -361,7 +363,7 @@ private fun Facts(movie: MovieDetails, modifier: Modifier) {
     val facts = listOfNotNull(
         movie.directors.takeIf { it.isNotEmpty() }?.let { (if (it.size > 1) "Directors" else "Director") to it.joinToString(", ") },
         movie.releaseDate?.takeIf { it.isNotBlank() }?.let { "Released" to it },
-        movie.spokenLanguages.takeIf { it.isNotEmpty() }?.let { "Languages" to it.joinToString(", ") { l -> l.englishName.ifBlank { l.code } } },
+        movie.spokenLanguages.takeIf { it.isNotEmpty() }?.let { "Languages" to it.joinToString(", ") { l -> l.englishName.ifBlank { languageDisplayName(l.code) ?: l.code } } },
     )
     if (facts.isEmpty()) return
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {

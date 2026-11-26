@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.niteshprasad.reelune.data.Movie
-import io.github.niteshprasad.reelune.data.Tmdb
 import io.github.niteshprasad.reelune.ui.theme.Reel
 import io.github.niteshprasad.reelune.ui.theme.glass
 import java.util.Locale
@@ -176,7 +175,7 @@ fun PosterCard(movie: Movie, onClick: () -> Unit, modifier: Modifier = Modifier,
                 .background(Brush.linearGradient(listOf(Reel.Twilight, Color(0xFF17122F)))),
         ) {
             AsyncImage(
-                model = Tmdb.poster(movie.posterPath),
+                model = movie.poster,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

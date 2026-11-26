@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.niteshprasad.reelune.R
 import io.github.niteshprasad.reelune.ReeluneApp
+import io.github.niteshprasad.reelune.data.CatalogSource
+import io.github.niteshprasad.reelune.ui.components.GlassButton
 import io.github.niteshprasad.reelune.ui.components.PrimaryButton
 import io.github.niteshprasad.reelune.ui.settings.KeyField
 import io.github.niteshprasad.reelune.ui.theme.Reel
@@ -58,7 +60,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
         scope.launch {
             try {
                 app.tmdb.verifyKey(key)
-                app.settings.update(tmdbKey = key)
+                app.settings.update(tmdbKey = key, catalog = CatalogSource.TMDB)
                 onDone()
             } catch (e: io.github.niteshprasad.reelune.data.UserFacingException) {
                 error = if (e.code == 401) "TMDB didn't accept that key. Check you copied all of it." else e.message
@@ -95,7 +97,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Connect to TMDB", style = MaterialTheme.typography.titleLarge, color = Reel.Text)
+            Text("Use TMDB", style = MaterialTheme.typography.titleLarge, color = Reel.Text)
             Text(
                 "Reelune gets its movie information from The Movie Database. Create a free account, open Settings › API, and paste your API key or API Read Access Token here.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -118,6 +120,27 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 enabled = key.isNotBlank() && !checking,
                 modifier = Modifier.fillMaxWidth(),
                 icon = if (checking) ({ CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Reel.Night) }) else null,
+            )
+        }
+        Column(
+            Modifier.fillMaxWidth().glass(RoundedCornerShape(24.dp)).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Or use YTS", style = MaterialTheme.typography.titleLarge, color = Reel.Text)
+            Text(
+                "No account or key needed. Includes IMDb ratings and US age ratings. You can switch any time in Settings.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Reel.TextSoft,
+            )
+            GlassButton(
+                "Use YTS",
+                onClick = {
+                    scope.launch {
+                        app.settings.update(catalog = CatalogSource.YTS)
+                        onDone()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
         Text(

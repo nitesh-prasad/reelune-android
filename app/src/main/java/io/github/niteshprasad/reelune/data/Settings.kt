@@ -21,8 +21,19 @@ data class Settings(
     val omdbKey: String = "",
     /** ISO 3166-1 country used for age certifications, e.g. "IN" or "US". */
     val region: String = defaultRegion(),
+    /** Null until the user picks a catalogue on first run. */
+    val catalog: CatalogSource? = null,
 ) {
     val hasTmdbKey: Boolean get() = tmdbKey.isNotBlank()
+
+    /** Ready to browse: a catalogue is chosen and, for TMDB, a key is saved. */
+    val isSetUp: Boolean get() = when (catalog) {
+        CatalogSource.YTS -> true
+        CatalogSource.TMDB -> hasTmdbKey
+        null -> hasTmdbKey // Installs from before the catalogue choice existed used TMDB.
+    }
+
+    val activeCatalog: CatalogSource get() = catalog ?: CatalogSource.TMDB
 
     companion object {
         fun defaultRegion(): String = Locale.getDefault().country.takeIf { it.length == 2 } ?: "US"
@@ -36,27 +47,28 @@ class SettingsRepository(private val context: Context) {
         val tmdb = stringPreferencesKey("tmdb_key")
         val omdb = stringPreferencesKey("omdb_key")
         val region = stringPreferencesKey("region")
+        val catalog = stringPreferencesKey("catalog")
     }
+
+    private fun read(p: androidx.datastore.preferences.core.Preferences) = Settings(
+        tmdbKey = p[Keys.tmdb].orEmpty(),
+        omdbKey = p[Keys.omdb].orEmpty(),
+        region = p[Keys.region] ?: Settings.defaultRegion(),
+        catalog = p[Keys.catalog]?.let { v -> CatalogSource.entries.firstOrNull { it.name == v } },
+    )
 
     val settings: StateFlow<Settings?> = context.dataStore.data
-        .map { p ->
-            Settings(
-                tmdbKey = p[Keys.tmdb].orEmpty(),
-                omdbKey = p[Keys.omdb].orEmpty(),
-                region = p[Keys.region] ?: Settings.defaultRegion(),
-            )
-        }
+        .map(::read)
         .stateIn(scope, SharingStarted.Eagerly, null)
 
-    suspend fun current(): Settings = settings.value ?: context.dataStore.data.first().let {
-        Settings(it[Keys.tmdb].orEmpty(), it[Keys.omdb].orEmpty(), it[Keys.region] ?: Settings.defaultRegion())
-    }
+    suspend fun current(): Settings = settings.value ?: read(context.dataStore.data.first())
 
-    suspend fun update(tmdbKey: String? = null, omdbKey: String? = null, region: String? = null) {
+    suspend fun update(tmdbKey: String? = null, omdbKey: String? = null, region: String? = null, catalog: CatalogSource? = null) {
         context.dataStore.edit { p ->
             tmdbKey?.let { p[Keys.tmdb] = it.trim() }
             omdbKey?.let { p[Keys.omdb] = it.trim() }
             region?.let { p[Keys.region] = it.trim().uppercase() }
+            catalog?.let { p[Keys.catalog] = it.name }
         }
     }
 }

@@ -20,6 +20,9 @@
 
 ## Features
 
+- **Choose your catalogue** in Settings (or on first launch):
+  - **TMDB:** huge catalogue, age ratings for your country, needs a free key
+  - **YTS:** no key needed, includes IMDb ratings and US age ratings; year and language filters use YTS's public browse pages
 - **Browse:** trending films in a rotating featured carousel, then a poster grid that keeps loading as you scroll
 - **Search** by title
 - **Filters:** genre, release year (single years or decades), original language (100+), minimum rating, and sort by popularity, rating, release date, box office or title
@@ -35,7 +38,7 @@
 
 1. Download `Reelune-<version>.apk` from [Releases](../../releases).
 2. Open it on your phone and allow installing from your browser or file manager when Android asks.
-3. On first launch, paste a free **TMDB** API key ([get one here](https://www.themoviedb.org/settings/api)). Both the short "API key" and the long "API Read Access Token" work.
+3. On first launch, either tap **Use YTS** (no key needed) or paste a free **TMDB** API key ([get one here](https://www.themoviedb.org/settings/api)). Both the short "API key" and the long "API Read Access Token" work. You can switch in Settings at any time.
 4. Optional: add a free **OMDb** key in Settings ([get one here](https://www.omdbapi.com/apikey.aspx)) for IMDb, Rotten Tomatoes and Metacritic scores.
 
 Keys are stored only on your phone.
@@ -123,7 +126,7 @@ adb shell am instrument -w -e class io.github.niteshprasad.reelune.PluginStreamT
 
 ```
 app/
-  data/          TMDB and OMDb clients, settings (DataStore)
+  data/          Catalog interface with TMDB and YTS implementations, OMDb client, settings (DataStore)
   plugin/        PluginManager: verify, copy, extract native libs, load, remove
   ui/home/       Featured carousel, search, filter sheets, poster grid
   ui/details/    Movie page, scores, trailer dialog, plugin sources
@@ -133,11 +136,11 @@ app/
 plugin-api/      The plugin contract (plain Kotlin/JVM)
 ```
 
-**Built with:** Jetpack Compose (Material 3), Navigation, DataStore, Media3 ExoPlayer, OkHttp, kotlinx.serialization, Coil 3, Haze, android-youtube-player.
+**Built with:** Jetpack Compose (Material 3), Navigation, DataStore, Media3 ExoPlayer, OkHttp, kotlinx.serialization, jsoup, Coil 3, Haze, android-youtube-player.
 
 ## Credits
 
-- Movie data and images: [TMDB](https://www.themoviedb.org). *This product uses the TMDB API but is not endorsed or certified by TMDB.*
+- Movie data and images: [TMDB](https://www.themoviedb.org) or [YTS](https://yts.gg/api), whichever you choose. *This product uses the TMDB API but is not endorsed or certified by TMDB.*
 - Ratings: [OMDb API](https://www.omdbapi.com).
 - Fonts: [Unbounded](https://fonts.google.com/specimen/Unbounded) and [Figtree](https://fonts.google.com/specimen/Figtree) (SIL Open Font License).
 

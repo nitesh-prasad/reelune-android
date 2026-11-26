@@ -56,6 +56,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.niteshprasad.reelune.BuildConfig
 import io.github.niteshprasad.reelune.ReeluneApp
+import io.github.niteshprasad.reelune.data.CatalogSource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import io.github.niteshprasad.reelune.plugin.PendingPlugin
 import io.github.niteshprasad.reelune.plugin.PluginState
 import io.github.niteshprasad.reelune.ui.components.GlassButton
@@ -77,12 +85,13 @@ fun SettingsScreen(onBack: () -> Unit) {
     var tmdb by remember { mutableStateOf("") }
     var omdb by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("") }
+    var source by remember { mutableStateOf(CatalogSource.TMDB) }
     var tmdbError by remember { mutableStateOf<String?>(null) }
     var saved by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
 
     LaunchedEffect(settings != null) {
-        settings?.let { tmdb = it.tmdbKey; omdb = it.omdbKey; region = it.region }
+        settings?.let { tmdb = it.tmdbKey; omdb = it.omdbKey; region = it.region; source = it.activeCatalog }
     }
 
     var pending by remember { mutableStateOf<PendingPlugin?>(null) }
@@ -104,9 +113,12 @@ fun SettingsScreen(onBack: () -> Unit) {
         tmdbError = null
         scope.launch {
             try {
-                if (tmdb.trim() != settings?.tmdbKey) app.tmdb.verifyKey(tmdb)
+                if (source == CatalogSource.TMDB) {
+                    if (tmdb.isBlank()) throw IllegalStateException("Add a TMDB key, or choose YTS.")
+                    if (tmdb.trim() != settings?.tmdbKey) app.tmdb.verifyKey(tmdb)
+                }
                 val r = region.trim().uppercase(Locale.ROOT)
-                app.settings.update(tmdbKey = tmdb, omdbKey = omdb, region = if (r.length == 2) r else "US")
+                app.settings.update(tmdbKey = tmdb, omdbKey = omdb, region = if (r.length == 2) r else "US", catalog = source)
                 saved = "Settings saved"
             } catch (e: Exception) {
                 tmdbError = e.message ?: "That key didn't work."
@@ -134,10 +146,16 @@ fun SettingsScreen(onBack: () -> Unit) {
             Text("Settings", style = MaterialTheme.typography.headlineMedium, color = Reel.Text)
         }
 
-        Panel("Movie data") {
-            Text("TMDB provides the catalogue, posters, trailers and age ratings.", color = Reel.TextSoft, style = MaterialTheme.typography.bodyMedium)
-            KeyField(tmdb, { tmdb = it; tmdbError = null; saved = null }, "TMDB API key or token", tmdbError)
-            LinkText("Get a free TMDB key") { openUri(context, "https://www.themoviedb.org/settings/api") }
+        Panel("Movie data source") {
+            CatalogSource.entries.forEach { option ->
+                SourceOption(option, selected = source == option, onClick = { source = option; tmdbError = null; saved = null })
+            }
+            if (source == CatalogSource.TMDB) {
+                KeyField(tmdb, { tmdb = it; tmdbError = null; saved = null }, "TMDB API key or token", tmdbError)
+                LinkText("Get a free TMDB key") { openUri(context, "https://www.themoviedb.org/settings/api") }
+            } else {
+                tmdbError?.let { Text(it, color = Reel.ToneAdult, style = MaterialTheme.typography.bodySmall) }
+            }
         }
 
         Panel("Ratings") {
@@ -157,7 +175,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            PrimaryButton(if (saving) "Saving…" else "Save settings", onClick = ::save, enabled = tmdb.isNotBlank() && !saving)
+            PrimaryButton(if (saving) "Saving…" else "Save settings", onClick = ::save, enabled = (source == CatalogSource.YTS || tmdb.isNotBlank()) && !saving)
             saved?.let { Text(it, color = Reel.ToneAll, style = MaterialTheme.typography.bodyMedium) }
         }
 
@@ -179,7 +197,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         Panel("About") {
             Text("Reelune ${BuildConfig.VERSION_NAME}", color = Reel.Text, style = MaterialTheme.typography.titleSmall)
             Text(
-                "Movie data and images from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. Ratings from OMDb.",
+                "Movie data and images from TMDB or YTS, whichever you choose. This product uses the TMDB API but is not endorsed or certified by TMDB. Ratings from OMDb.",
                 color = Reel.TextFaint,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -268,6 +286,27 @@ private fun PluginRow(p: PluginState, onRemove: () -> Unit) {
         )
         SelectionContainer {
             Text(p.plugin.certificate, fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = Reel.TextFaint)
+        }
+    }
+}
+
+@Composable
+private fun SourceOption(option: CatalogSource, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) Reel.Moonglow.copy(alpha = 0.12f) else Reel.Night.copy(alpha = 0.3f))
+            .border(1.dp, if (selected) Reel.Moonglow.copy(alpha = 0.6f) else Reel.GlassLine, RoundedCornerShape(16.dp))
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        RadioButton(selected = selected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = Reel.Moonglow, unselectedColor = Reel.TextFaint))
+        Column(Modifier.weight(1f)) {
+            Text(option.label, color = Reel.Text, style = MaterialTheme.typography.titleSmall)
+            Text(option.description, color = Reel.TextSoft, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

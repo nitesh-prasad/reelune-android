@@ -76,7 +76,6 @@ import coil3.compose.AsyncImage
 import io.github.niteshprasad.reelune.data.Movie
 import io.github.niteshprasad.reelune.data.MovieFilters
 import io.github.niteshprasad.reelune.data.SortOption
-import io.github.niteshprasad.reelune.data.Tmdb
 import io.github.niteshprasad.reelune.ui.UseBackdrop
 import io.github.niteshprasad.reelune.ui.components.GlassButton
 import io.github.niteshprasad.reelune.ui.components.MessagePanel
@@ -86,13 +85,15 @@ import io.github.niteshprasad.reelune.ui.components.RatingPill
 import io.github.niteshprasad.reelune.ui.components.Shimmer
 import androidx.compose.ui.layout.layout
 import io.github.niteshprasad.reelune.ui.theme.Body
+import io.github.niteshprasad.reelune.ui.theme.fadeToTransparent
+import androidx.compose.ui.graphics.Color
 import io.github.niteshprasad.reelune.ui.theme.Reel
 import io.github.niteshprasad.reelune.ui.theme.glass
 import kotlinx.coroutines.delay
 import java.time.Year
 
 @Composable
-fun HomeScreen(onOpenMovie: (Int) -> Unit, onOpenSettings: () -> Unit, vm: HomeViewModel = viewModel()) {
+fun HomeScreen(onOpenMovie: (String) -> Unit, onOpenSettings: () -> Unit, vm: HomeViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val grid = rememberLazyGridState()
     var sheet by remember { mutableStateOf<FilterKind?>(null) }
@@ -104,7 +105,7 @@ fun HomeScreen(onOpenMovie: (Int) -> Unit, onOpenSettings: () -> Unit, vm: HomeV
             .collect { last -> if (last >= grid.layoutInfo.totalItemsCount - 8) vm.loadNext() }
     }
     LaunchedEffect(state.filters) { if (grid.firstVisibleItemIndex > 2) grid.scrollToItem(if (state.showFeatured) 1 else 0) }
-    if (!state.showFeatured) UseBackdrop(Tmdb.backdrop(state.movies.firstOrNull()?.backdropPath, "w780"))
+    if (!state.showFeatured) UseBackdrop(state.movies.firstOrNull()?.let { it.backdrop ?: it.poster })
 
     Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(
@@ -139,8 +140,8 @@ fun HomeScreen(onOpenMovie: (Int) -> Unit, onOpenSettings: () -> Unit, vm: HomeV
                 }
             }
 
-            items(state.movies, key = { it.id }) { movie ->
-                PosterCard(movie, onClick = { onOpenMovie(movie.id) }, languageName = { languageNames[it] })
+            items(state.movies, key = { it.navKey }) { movie ->
+                PosterCard(movie, onClick = { onOpenMovie(movie.navKey) }, languageName = { languageNames[it] })
             }
 
             if (state.loading && state.movies.isEmpty()) {
@@ -173,7 +174,7 @@ fun HomeScreen(onOpenMovie: (Int) -> Unit, onOpenSettings: () -> Unit, vm: HomeV
                             "No movies match",
                             "Try another spelling, a wider year range or fewer filters.",
                             Modifier.padding(top = 12.dp),
-                        ) { GlassButton("Clear filters", onClick = { vm.onSearchText(""); vm.setFilters(MovieFilters()) }) }
+                        ) { GlassButton("Clear filters", onClick = { vm.onSearchText(""); vm.clearFilters() }) }
                         !state.hasMore && state.movies.isNotEmpty() -> Text("That's every match.", color = Reel.TextFaint, style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -201,7 +202,13 @@ fun HomeScreen(onOpenMovie: (Int) -> Unit, onOpenSettings: () -> Unit, vm: HomeV
 private fun heading(f: MovieFilters, genre: String?, language: String?): String {
     if (f.query.isNotBlank()) return "Results for “${f.query}”"
     val noun = listOfNotNull(language, genre?.lowercase()).joinToString(" ").replaceFirstChar { it.uppercase() }
-    val base = if (noun.isBlank()) (if (f.sort == SortOption.POPULAR && !f.hasFilters) "Popular right now" else "Movies") else "$noun movies"
+    val base = if (noun.isBlank()) {
+        when {
+            f.hasFilters -> "Movies"
+            f.defaultSort == SortOption.LATEST -> "Recently added"
+            else -> "Popular right now"
+        }
+    } else "$noun movies"
     val year = when {
         f.year.isBlank() -> ""
         f.year.length == 4 -> " from ${f.year}"
@@ -251,14 +258,14 @@ private fun TopBar(searchText: String, onSearch: (String) -> Unit, onOpenSetting
 // ---------- Featured ----------
 
 @Composable
-private fun FeaturedCarousel(items: List<Movie>, onOpenMovie: (Int) -> Unit) {
+private fun FeaturedCarousel(items: List<Movie>, onOpenMovie: (String) -> Unit) {
     var index by remember { mutableIntStateOf(0) }
     LaunchedEffect(items, index) {
         delay(8000)
         index = (index + 1) % items.size
     }
     val movie = items[index.coerceIn(0, items.lastIndex)]
-    UseBackdrop(Tmdb.backdrop(movie.backdropPath, "w780"))
+    UseBackdrop(movie.backdrop)
 
     Box(Modifier.fillMaxWidth().fullBleed(16.dp).heightIn(min = 520.dp)) {
         AnimatedContent(
@@ -269,16 +276,13 @@ private fun FeaturedCarousel(items: List<Movie>, onOpenMovie: (Int) -> Unit) {
         ) { m ->
             Box(Modifier.fillMaxSize()) {
                 AsyncImage(
-                    model = Tmdb.backdrop(m.backdropPath),
+                    model = m.backdropLarge,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(380.dp).clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
+                    modifier = Modifier.fillMaxWidth().height(440.dp).fadeToTransparent(start = 0.45f),
                 )
-                Box(
-                    Modifier.fillMaxWidth().height(381.dp).background(
-                        Brush.verticalGradient(0f to Reel.Night.copy(alpha = 0.35f), 0.45f to Reel.Night.copy(alpha = 0f), 1f to Reel.Night),
-                    ),
-                )
+                // Darken the top so the status bar and search bar stay readable.
+                Box(Modifier.fillMaxWidth().height(160.dp).background(Brush.verticalGradient(listOf(Reel.Night.copy(alpha = 0.45f), Color.Transparent))))
             }
         }
         AnimatedContent(
@@ -297,7 +301,7 @@ private fun FeaturedCarousel(items: List<Movie>, onOpenMovie: (Int) -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                     PrimaryButton(
                         "Details and trailer",
-                        onClick = { onOpenMovie(m.id) },
+                        onClick = { onOpenMovie(m.navKey) },
                         icon = { Icon(Icons.Rounded.Info, null, tint = Reel.Night, modifier = Modifier.size(18.dp)) },
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -332,7 +336,7 @@ private fun FilterRow(state: HomeState, languageNames: Map<String, String>, onOp
         FilterChip("Year", yearLabel(f.year), onClick = { onOpen(FilterKind.YEAR) })
         FilterChip("Language", languageNames[f.language] ?: f.language.ifEmpty { null }, onClick = { onOpen(FilterKind.LANGUAGE) })
         FilterChip("Rating", f.minRating.takeIf { it > 0 }?.let { "$it+" }, onClick = { onOpen(FilterKind.RATING) })
-        FilterChip("Sort", f.sort.label.takeIf { f.sort != SortOption.POPULAR }, onClick = { onOpen(FilterKind.SORT) })
+        FilterChip("Sort", f.sort.label.takeIf { f.sort != f.defaultSort }, onClick = { onOpen(FilterKind.SORT) })
         if (f.hasFilters) {
             Box(
                 Modifier.height(40.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClear).padding(horizontal = 14.dp),

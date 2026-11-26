@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.niteshprasad.reelune.data.MovieFilters
-import io.github.niteshprasad.reelune.data.SortOption
 import io.github.niteshprasad.reelune.ui.theme.Reel
 import java.time.Year
 
@@ -61,7 +60,7 @@ fun FilterSheet(kind: FilterKind, state: HomeState, onDismiss: () -> Unit, onPic
         }
         FilterKind.SORT -> {
             title = "Sort by"
-            choices = SortOption.entries.map { s -> Choice(s.label, apply = { it.copy(sort = s) }, selected = f.sort == s) }
+            choices = state.sorts.map { s -> Choice(s.label, apply = { it.copy(sort = s) }, selected = f.sort == s) }
         }
         FilterKind.RATING -> {
             title = "Minimum rating"
@@ -73,7 +72,7 @@ fun FilterSheet(kind: FilterKind, state: HomeState, onDismiss: () -> Unit, onPic
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = kind != FilterKind.YEAR && kind != FilterKind.LANGUAGE),
-        containerColor = Reel.GlassStrong,
+        containerColor = androidx.compose.ui.graphics.Color(0xFF17122F),
         contentColor = Reel.Text,
         scrimColor = Reel.Night.copy(alpha = 0.55f),
     ) {

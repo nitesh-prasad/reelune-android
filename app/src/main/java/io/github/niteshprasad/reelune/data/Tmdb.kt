@@ -22,8 +22,19 @@ data class Movie(
     @SerialName("vote_average") val voteAverage: Double = 0.0,
     @SerialName("vote_count") val voteCount: Int = 0,
     @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
+    // Set by catalogues other than TMDB (never present in TMDB's JSON).
+    val sourceKey: String = "",
+    val posterUrl: String? = null,
+    val backdropUrl: String? = null,
+    val genreNames: List<String> = emptyList(),
 ) {
     val year: Int? get() = releaseDate?.take(4)?.toIntOrNull()
+
+    /** Identifies the movie across catalogues, e.g. "tmdb:603" or "yts:1234". Used for navigation. */
+    val navKey: String get() = sourceKey.ifEmpty { "tmdb:$id" }
+    val poster: String? get() = posterUrl ?: Tmdb.poster(posterPath)
+    val backdrop: String? get() = backdropUrl ?: Tmdb.backdrop(backdropPath, "w780")
+    val backdropLarge: String? get() = backdropUrl ?: Tmdb.backdrop(backdropPath)
 }
 
 @Serializable
@@ -54,7 +65,17 @@ data class Video(val key: String, val site: String = "", val type: String = "", 
 data class VideoList(val results: List<Video> = emptyList())
 
 @Serializable
-data class CastMember(val id: Int, val name: String, val character: String? = null, @SerialName("profile_path") val profilePath: String? = null)
+data class CastMember(
+    val id: Int,
+    val name: String,
+    val character: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+    val photoUrl: String? = null,
+    val link: String? = null,
+) {
+    val photo: String? get() = photoUrl ?: Tmdb.profile(profilePath)
+    val page: String get() = link ?: "https://www.themoviedb.org/person/$id"
+}
 
 @Serializable
 data class CrewMember(val id: Int, val name: String, val job: String? = null)
@@ -95,8 +116,19 @@ data class MovieDetails(
     val credits: Credits = Credits(),
     @SerialName("release_dates") val releaseDates: ReleaseDates = ReleaseDates(),
     val similar: MoviePage = MoviePage(),
+    // Set by catalogues other than TMDB.
+    val source: CatalogSource = CatalogSource.TMDB,
+    val posterUrl: String? = null,
+    val backdropUrl: String? = null,
+    /** IMDb rating supplied by the catalogue itself (YTS has it; TMDB doesn't). */
+    val sourceImdbRating: Double? = null,
+    /** Certification supplied by the catalogue, with its country. */
+    val sourceCertification: String? = null,
 ) {
     val year: Int? get() = releaseDate?.take(4)?.toIntOrNull()
+    val poster: String? get() = posterUrl ?: Tmdb.poster(posterPath, "w500")
+    val backdrop: String? get() = backdropUrl ?: Tmdb.backdrop(backdropPath)
+    val backdropSmall: String? get() = backdropUrl ?: Tmdb.backdrop(backdropPath, "w780")
 
     /** Best YouTube trailer: official trailers first, then teasers. */
     val trailerKey: String?
@@ -113,6 +145,7 @@ data class MovieDetails(
 
     /** Age certification for [region], falling back to the US, preferring theatrical releases. */
     fun certification(region: String): Pair<String, String>? {
+        sourceCertification?.takeIf { it.isNotBlank() }?.let { return it to "US" }
         fun forCountry(code: String): String? = releaseDates.results
             .firstOrNull { it.country.equals(code, true) }
             ?.releaseDates
@@ -127,12 +160,14 @@ data class MovieDetails(
 
 // ---------- Filters ----------
 
-enum class SortOption(val label: String, val apiValue: String) {
-    POPULAR("Popular", "popularity.desc"),
-    TOP_RATED("Top rated", "vote_average.desc"),
-    NEWEST("Newest", "primary_release_date.desc"),
-    REVENUE("Box office", "revenue.desc"),
-    TITLE("Title A–Z", "title.asc"),
+/** Sort orders. Each catalogue offers the subset it supports ([Catalog.sorts]). */
+enum class SortOption(val label: String) {
+    LATEST("Recently added"),
+    POPULAR("Popular"),
+    TOP_RATED("Top rated"),
+    NEWEST("Newest"),
+    REVENUE("Box office"),
+    TITLE("Title A–Z"),
 }
 
 /** Year filter: a single year ("2019"), a range ("2010-2019") or empty for any. */
@@ -143,14 +178,27 @@ data class MovieFilters(
     val language: String = "",
     val sort: SortOption = SortOption.POPULAR,
     val minRating: Int = 0,
+    /** The catalogue's default order; choosing it doesn't count as a filter. */
+    val defaultSort: SortOption = SortOption.POPULAR,
 ) {
-    val isDefault: Boolean get() = this == MovieFilters()
-    val hasFilters: Boolean get() = genreId != null || year.isNotEmpty() || language.isNotEmpty() || sort != SortOption.POPULAR || minRating > 0
+    val hasFilters: Boolean get() = genreId != null || year.isNotEmpty() || language.isNotEmpty() || sort != defaultSort || minRating > 0
+    val isDefault: Boolean get() = query.isBlank() && !hasFilters
+
+    fun cleared() = MovieFilters(query = query, sort = defaultSort, defaultSort = defaultSort)
 }
 
 // ---------- Client ----------
 
-class Tmdb(private val settings: SettingsRepository) {
+class Tmdb(private val settings: SettingsRepository) : Catalog {
+    override val source = CatalogSource.TMDB
+    override val sorts = listOf(SortOption.POPULAR, SortOption.TOP_RATED, SortOption.NEWEST, SortOption.REVENUE, SortOption.TITLE)
+    override val defaultSort = SortOption.POPULAR
+
+    override suspend fun featured(): List<Movie> = trending().filter { it.backdropPath != null }.take(6)
+
+    override suspend fun details(key: String): MovieDetails =
+        details(key.removePrefix("tmdb:").toIntOrNull() ?: throw UserFacingException("That movie link isn't valid."))
+
     private val base = "https://api.themoviedb.org/3"
     private val cache = ConcurrentHashMap<String, Any>()
 
@@ -187,17 +235,17 @@ class Tmdb(private val settings: SettingsRepository) {
 
     suspend fun trending(): List<Movie> = call<MoviePage>("/trending/movie/week", mapOf("language" to "en-US")).results
 
-    suspend fun genres(): List<Genre> = cached("genres") {
+    override suspend fun genres(): List<Genre> = cached("genres") {
         call<GenreList>("/genre/movie/list", mapOf("language" to "en-US")).genres
     }
 
-    suspend fun languages(): List<Language> = cached("languages") {
+    override suspend fun languages(): List<Language> = cached("languages") {
         call<List<Language>>("/configuration/languages")
             .filter { it.code != "xx" && it.englishName.isNotBlank() }
             .sortedBy { it.englishName }
     }
 
-    suspend fun movies(filters: MovieFilters, page: Int): MoviePage {
+    override suspend fun movies(filters: MovieFilters, page: Int): MoviePage {
         val (from, to) = yearBounds(filters.year)
         if (filters.query.isNotBlank()) {
             val single = filters.year.takeIf { it.length == 4 }
@@ -220,7 +268,13 @@ class Tmdb(private val settings: SettingsRepository) {
             "include_adult" to "false",
             "include_video" to "false",
             "language" to "en-US",
-            "sort_by" to filters.sort.apiValue,
+            "sort_by" to when (filters.sort) {
+                SortOption.TOP_RATED -> "vote_average.desc"
+                SortOption.NEWEST, SortOption.LATEST -> "primary_release_date.desc"
+                SortOption.REVENUE -> "revenue.desc"
+                SortOption.TITLE -> "title.asc"
+                SortOption.POPULAR -> "popularity.desc"
+            },
             "with_genres" to filters.genreId?.toString(),
             "with_original_language" to filters.language.ifEmpty { null },
             "primary_release_date.gte" to from?.toString(),

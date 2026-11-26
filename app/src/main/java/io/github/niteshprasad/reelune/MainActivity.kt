@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -44,8 +45,8 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val SETTINGS = "settings"
-    const val MOVIE = "movie/{id}"
-    fun movie(id: Int) = "movie/$id"
+    const val MOVIE = "movie/{key}"
+    fun movie(key: String) = "movie/" + android.net.Uri.encode(key)
 }
 
 @Composable
@@ -59,9 +60,11 @@ private fun ReeluneRoot() {
         val s = settings ?: return@Box // Settings load in a few milliseconds; the sky shows meanwhile.
         CompositionLocalProvider(LocalHaze provides skyHaze) {
             val nav = rememberNavController()
+            // Decided once: changing settings later must not rebuild the navigation graph.
+            val start = remember { if (s.isSetUp) Routes.HOME else Routes.ONBOARDING }
             NavHost(
                 navController = nav,
-                startDestination = if (s.hasTmdbKey) Routes.HOME else Routes.ONBOARDING,
+                startDestination = start,
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() },
             ) {
@@ -76,9 +79,9 @@ private fun ReeluneRoot() {
                         onOpenSettings = { nav.navigate(Routes.SETTINGS) },
                     )
                 }
-                composable(Routes.MOVIE, arguments = listOf(navArgument("id") { type = NavType.IntType })) { entry ->
+                composable(Routes.MOVIE, arguments = listOf(navArgument("key") { type = NavType.StringType })) { entry ->
                     DetailsScreen(
-                        movieId = entry.arguments?.getInt("id") ?: 0,
+                        movieKey = entry.arguments?.getString("key").orEmpty(),
                         onBack = { nav.popBackStack() },
                         onOpenMovie = { nav.navigate(Routes.movie(it)) },
                         onOpenSettings = { nav.navigate(Routes.SETTINGS) },

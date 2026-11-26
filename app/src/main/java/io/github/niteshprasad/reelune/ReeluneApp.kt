@@ -6,7 +6,10 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
+import io.github.niteshprasad.reelune.data.Catalog
+import io.github.niteshprasad.reelune.data.CatalogSource
 import io.github.niteshprasad.reelune.data.Http
+import io.github.niteshprasad.reelune.data.YtsCatalog
 import io.github.niteshprasad.reelune.data.Omdb
 import io.github.niteshprasad.reelune.data.SettingsRepository
 import io.github.niteshprasad.reelune.data.Tmdb
@@ -20,6 +23,15 @@ class ReeluneApp : Application(), SingletonImageLoader.Factory {
         private set
     lateinit var omdb: Omdb
         private set
+    val yts = YtsCatalog()
+
+    fun catalog(source: CatalogSource): Catalog = when (source) {
+        CatalogSource.TMDB -> tmdb
+        CatalogSource.YTS -> yts
+    }
+
+    /** The catalogue that produced a [io.github.niteshprasad.reelune.data.Movie.navKey]. */
+    fun catalogForKey(key: String): Catalog = if (key.startsWith("yts")) yts else tmdb
     lateinit var plugins: PluginManager
         private set
 
